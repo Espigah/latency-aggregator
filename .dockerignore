@@ -1,0 +1,8 @@
+.trivy
+__tools__
+hooks
+3rd
+.vscode
+.git
+.gitignore
+tmp

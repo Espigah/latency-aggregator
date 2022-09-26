@@ -1,0 +1,12 @@
+.history
+tmp
+bin
+.dccache
+awscliv2.zip
+configurationCache.log
+dryrun.log
+targets.log
+aws
+.dccache
+!3rd/gocovmerge/bin
+.trivy

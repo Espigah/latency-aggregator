@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    ports:
+      - 8000:8000
+    command: "-jar DynamoDBLocal.jar -sharedDb"
+    networks:
+      - latency-aggregator
+
+  dynamodb-admin:
+    image: aaronshaf/dynamodb-admin
+    ports:
+      - "8001:8001"
+    environment:
+      DYNAMO_ENDPOINT: "http://dynamodb-local:8000"
+    depends_on:
+      - dynamodb-local
+    networks:
+      - latency-aggregator
+
+  dynamodb-table:
+    image: amazon/aws-cli:latest
+    entrypoint: "/bin/sh -c \"aws dynamodb create-table --region us-east-1 --table-name $${DYNAMO_TABLE_NAME} --attribute-definitions AttributeName=key,AttributeType=S --key-schema AttributeName=key,KeyType=HASH --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 --endpoint-url http://dynamodb-local:8000\""
+    volumes:
+      - ~/.aws:/root/.aws
+    env_file:
+      - .env.local
+    networks:
+      - latency-aggregator
+    depends_on:
+      - dynamodb-local
+      - dynamodb-admin
+
+  prometheus:
+    extends:
+      file: docker-compose.o11y.yml
+      service: prometheus
+
+  grafana:
+    extends:
+      file: docker-compose.o11y.yml
+      service: grafana
+    depends_on:
+      - prometheus
+
+      
+networks:
+  latency-aggregator:
+    driver: bridge

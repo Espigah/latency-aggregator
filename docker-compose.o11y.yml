@@ -1,0 +1,32 @@
+version: '3.8'
+
+
+services: 
+
+  prometheus:
+    image: prom/prometheus:v2.15.2
+    volumes:
+      - type: bind
+        source: ./__tools__/prometheus/prometheus.yml
+        target: /etc/prometheus/prometheus.yml
+        read_only: true
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    network_mode: 'host' # para que seja possivel chegar no backend com localhost
+    #http://localhost:9090/targets
+
+  grafana:
+    image: grafana/grafana
+    user: grafana
+    environment:
+      GF_SERVER_HTTP_PORT: '3001' # para nao colidir com o backend
+    volumes:
+      - type: bind
+        source: ./__tools__/grafana/provisioning/
+        target: /etc/grafana/provisioning/
+    env_file:
+      - ./__tools__/grafana/config.monitoring    
+    network_mode: 'host'  # para que seja possivel chegar no backend com localhost

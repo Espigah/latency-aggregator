@@ -1,0 +1,65 @@
+{
+  // Use o IntelliSense para saber mais sobre os atributos possíveis.
+  // Focalizar para exibir as descrições dos atributos existentes.
+  // Para obter mais informações, acesse: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch dev",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "cmd/latency-aggregator/main.go",
+      "env": {
+        "ENVIRONMENT": "development"
+      },
+      "cwd": "./"
+    },
+    {
+      "name": "Debug Test",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "pkg/prometheus/latency-aggregator/latency-aggregator_test.go",
+      "env": {
+        "ENVIRONMENT": "local"
+      },
+      "showLog": true,
+      "cwd": "./"
+    },
+    {
+      "name": "Debug Current File",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${file}",
+      "env": {
+        "ENVIRONMENT": "local"
+      },
+      "showLog": true,
+      "cwd": "./"
+    },
+    {
+      "name": "Launch stg",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "cmd/latency-aggregator/main.go",
+      "env": {
+        "ENVIRONMENT": "stg",
+      },
+      "cwd": "./"
+    },
+    {
+      "name": "Launch prd",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "cmd/latency-aggregator/main.go",
+      "env": {
+        "ENVIRONMENT": "prd",
+      },
+      "cwd": "./"
+    },
+  ]
+}

@@ -1,0 +1,23 @@
+version: '3.8'
+
+volumes:
+  redis_data: {}
+
+services:
+  latency-aggregator:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - "upx=1"
+    container_name: latency-aggregator-api
+    ports:
+      - "7070:7070"
+    networks:
+      - latency-aggregator
+    env_file: 
+      - ./.env.docker.local
+
+networks:
+  latency-aggregator:
+    driver: bridge

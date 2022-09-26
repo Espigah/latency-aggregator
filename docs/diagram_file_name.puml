@@ -1,0 +1,430 @@
+@startuml
+namespace aggregator {
+    interface Aggregator  {
+        + CollectHistogram(histogramAggregator MetricAggregatorDTO) (<font color=blue>interface</font>{}, error)
+
+    }
+    interface Collector  {
+        + Collect( *Entity,  float64) 
+
+    }
+    class Entity << (S,Aquamarine) >> {
+        + ID string
+        + Name string
+        + Help string
+        + CreatedAt time.Time
+        + UpdateAt time.Time
+        + Stages []Stage
+        + State string
+        + TimeToLiveSeconds int
+
+        + LabelValues() <font color=blue>map</font>[string]string
+        + LastLifeSpan() int
+        + AddStage(stage Stage) 
+        + InProgress() bool
+        + Close() 
+
+    }
+    class Input << (S,Aquamarine) >> {
+        + Repository Repository
+        + Collector Collector
+
+    }
+    interface Meter  {
+        + Registry(duration float64) 
+
+    }
+    class MetricAggregatorDTO << (S,Aquamarine) >> {
+        + ID string
+        + LifeSpan int
+        + CreatedAt time.Time
+        + Name string
+        + Help string
+        + ConstLabels Labels
+        + Buckets []float64
+        + Stage string
+        + LabelValues <font color=blue>map</font>[string]string
+        + ForceRegistryUpdate bool
+        + TimeToLiveSeconds int
+
+    }
+    interface Repository  {
+    }
+    interface RepositoryReader  {
+        + Find( string) (*Entity, error)
+
+    }
+    interface RepositoryWriter  {
+        + Insert( Entity) (*Entity, error)
+        + Delete( string) error
+        + Update( Entity) (*Entity, error)
+
+    }
+    class Stage << (S,Aquamarine) >> {
+        + Stage string
+        + CreatedAt time.Time
+        + LifeSpan int
+        + LabelValues <font color=blue>map</font>[string]string
+
+        + Equal(target Stage) bool
+
+    }
+    class aggregator << (S,Aquamarine) >> {
+        - repository Repository
+        - collector Collector
+
+        - schedule(dto MetricAggregatorDTO) (<font color=blue>interface</font>{}, error)
+        - task(entity *Entity, collector Collector) 
+        - findEntity(dto MetricAggregatorDTO) (*Entity, error)
+        - saveNewEntity(dto MetricAggregatorDTO) (*Entity, error)
+        - updateEntityIfStageIsNew(dto MetricAggregatorDTO, entity *Entity) (*Entity, error)
+
+        + CollectHistogram(dto MetricAggregatorDTO) (<font color=blue>interface</font>{}, error)
+
+    }
+    class aggregator.Labels << (T, #FF7700) >>  {
+    }
+}
+"aggregator.RepositoryReader" *-- "aggregator.Repository"
+"aggregator.RepositoryWriter" *-- "aggregator.Repository"
+
+"aggregator.Aggregator" <|-- "aggregator.aggregator"
+
+namespace api {
+    class Input << (S,Aquamarine) >> {
+        + Logger logwrapper.LoggerWrapper
+        + Aggregator aggregator.Aggregator
+
+    }
+}
+
+
+namespace appcontext {
+    interface Context  {
+        + Done() 
+        + SetLogger(logger logwrapper.LoggerWrapper) 
+        + Logger() logwrapper.LoggerWrapper
+        + Context() context.Context
+        + TraceID() string
+        + SpanID() string
+        + WithValue(key <font color=blue>interface</font>{}, val <font color=blue>interface</font>{}) 
+        + Value(key <font color=blue>interface</font>{}) <font color=blue>interface</font>{}
+        + TTL() *int64
+
+    }
+    class appContext << (S,Aquamarine) >> {
+        - logger logwrapper.LoggerWrapper
+        - defaultBackgroundContext context.Context
+        - ginContext *gin.Context
+
+        + SetLogger(logger logwrapper.LoggerWrapper) 
+        + Logger() logwrapper.LoggerWrapper
+        + Context() context.Context
+        + Done() 
+        + TraceID() string
+        + SpanID() string
+        + WithValue(key <font color=blue>interface</font>{}, val <font color=blue>interface</font>{}) 
+        + Value(key <font color=blue>interface</font>{}) <font color=blue>interface</font>{}
+        + TTL() *int64
+
+    }
+    class appcontext.ContextKey << (T, #FF7700) >>  {
+    }
+    class mock << (S,Aquamarine) >> {
+        - logger logwrapper.LoggerWrapper
+
+        + SetLogger(logger logwrapper.LoggerWrapper) 
+        + Logger() logwrapper.LoggerWrapper
+        + Context() context.Context
+        + TraceID() string
+        + SpanID() string
+        + Done() 
+        + WithValue(key <font color=blue>interface</font>{}, val <font color=blue>interface</font>{}) 
+        + Value(key <font color=blue>interface</font>{}) <font color=blue>interface</font>{}
+        + TTL() *int64
+
+    }
+}
+
+"appcontext.Context" <|-- "appcontext.appContext"
+"appcontext.Context" <|-- "appcontext.mock"
+
+namespace collector {
+    class collector << (S,Aquamarine) >> {
+        + Collect(entity *aggregator.Entity, duration float64) 
+        + NewGouge(entity *aggregator.Entity) (aggregator.Meter, error)
+        + NewHistogram(entity *aggregator.Entity) (aggregator.Meter, error)
+
+    }
+}
+"aggregator.Repository" *-- "collector.collector"
+
+"aggregator.Collector" <|-- "collector.collector"
+
+namespace database {
+    class memoryDatabase << (S,Aquamarine) >> {
+        - records <font color=blue>map</font>[string]*aggregator.Entity
+
+        + Find(id string) (*aggregator.Entity, error)
+        + Insert(aggregatorEntity aggregator.Entity) (*aggregator.Entity, error)
+        + Update(aggregatorEntity aggregator.Entity) (*aggregator.Entity, error)
+        + Delete(id string) error
+
+    }
+}
+
+"aggregator.RepositoryReader" <|-- "database.memoryDatabase"
+"aggregator.RepositoryWriter" <|-- "database.memoryDatabase"
+
+namespace environment {
+    class Single << (S,Aquamarine) >> {
+        + ENVIRONMENT string
+        + APP_VERSION string
+        + APP_PORT string
+        + LOG_LEVEL string
+
+        + Setup() 
+        + IsDevelopment() bool
+
+    }
+}
+
+
+namespace latencyaggregator {
+    interface HistogramAggregator  {
+        + Push() error
+        + ID( string) HistogramAggregator
+        + URL( string) HistogramAggregator
+        + CreatedAt( time.Time) HistogramAggregator
+        + LifeSpan( int) HistogramAggregator
+        + Name( string) HistogramAggregator
+        + Help( string) HistogramAggregator
+        + LabelValues( <font color=blue>map</font>[string]string) HistogramAggregator
+        + TimeToLiveSeconds( int) HistogramAggregator
+        + Stage( string) HistogramAggregator
+
+    }
+    class PushResult << (S,Aquamarine) >> {
+    }
+    class histogramAggregator << (S,Aquamarine) >> {
+        - url string
+
+        + ID string
+        + LifeSpan int
+        + CreatedAt time.Time
+        + Name string
+        + Help string
+        + Buckets []float64
+        + Stage string
+        + LabelValues <font color=blue>map</font>[string]string
+        + ForceRegistryUpdate bool
+        + TimeToLiveSeconds int
+
+    }
+    class histogramAggregatorBuilder << (S,Aquamarine) >> {
+        - payload *histogramAggregator
+
+        + URL(value string) HistogramAggregator
+        + ID(value string) HistogramAggregator
+        + LifeSpan(value int) HistogramAggregator
+        + CreatedAt(value time.Time) HistogramAggregator
+        + Name(value string) HistogramAggregator
+        + Help(value string) HistogramAggregator
+        + LabelValues(value <font color=blue>map</font>[string]string) HistogramAggregator
+        + TimeToLiveSeconds(value int) HistogramAggregator
+        + Stage(value string) HistogramAggregator
+        + Push() error
+
+    }
+    class latencyaggregator.Labels << (T, #FF7700) >>  {
+    }
+}
+
+"latencyaggregator.HistogramAggregator" <|-- "latencyaggregator.histogramAggregatorBuilder"
+
+namespace logwrapper {
+    interface Logger  {
+        + Info(msg string, fields ...zap.Field) 
+        + Error(msg string, fields ...zap.Field) 
+        + Warn(msg string, fields ...zap.Field) 
+        + Fatal(msg string, fields ...zap.Field) 
+        + Debug(msg string, fields ...zap.Field) 
+
+    }
+    interface LoggerWrapper  {
+        + SetTraceID(v string) LoggerWrapper
+        + SetVersion(v string) LoggerWrapper
+        + CreateSpan() LoggerWrapper
+        + RemoveSpan() LoggerWrapper
+        + TraceID() string
+        + Version() string
+        + Span() *Span
+
+    }
+    class Span << (S,Aquamarine) >> {
+        - parent *Span
+
+        + ID string
+
+    }
+    class Zap << (S,Aquamarine) >> {
+        + Logger zap.Logger
+
+        + Info(msg string, fields ...zap.Field) 
+        + Warn(msg string, fields ...zap.Field) 
+        + Error(msg string, fields ...zap.Field) 
+        + Fatal(msg string, fields ...zap.Field) 
+        + Debug(msg string, fields ...zap.Field) 
+
+    }
+    class logWrapper << (S,Aquamarine) >> {
+        - logger Logger
+        - traceID string
+        - span *Span
+        - version string
+
+        - clone() LoggerWrapper
+        - mergeField(fields ...zap.Field) []zap.Field
+
+        + SetTraceID(v string) LoggerWrapper
+        + TraceID() string
+        + SetVersion(v string) LoggerWrapper
+        + Version() string
+        + Span() *Span
+        + CreateSpan() LoggerWrapper
+        + RemoveSpan() LoggerWrapper
+        + Info(msg string, fields ...zap.Field) 
+        + Warn(msg string, fields ...zap.Field) 
+        + Error(msg string, fields ...zap.Field) 
+        + Fatal(msg string, fields ...zap.Field) 
+        + Debug(msg string, fields ...zap.Field) 
+
+    }
+    class mock << (S,Aquamarine) >> {
+        + SetTraceID(v string) LoggerWrapper
+        + TraceID() string
+        + SetVersion(v string) LoggerWrapper
+        + Version() string
+        + CreateSpan() LoggerWrapper
+        + RemoveSpan() LoggerWrapper
+        + Span() *Span
+        + Info(msg string, fields ...zap.Field) 
+        + Warn(msg string, fields ...zap.Field) 
+        + Error(msg string, fields ...zap.Field) 
+        + Fatal(msg string, fields ...zap.Field) 
+        + Debug(msg string, fields ...zap.Field) 
+
+    }
+}
+"logwrapper.Logger" *-- "logwrapper.LoggerWrapper"
+
+"logwrapper.Logger" <|-- "logwrapper.Zap"
+"logwrapper.Logger" <|-- "logwrapper.logWrapper"
+"logwrapper.LoggerWrapper" <|-- "logwrapper.logWrapper"
+"logwrapper.Logger" <|-- "logwrapper.mock"
+"logwrapper.LoggerWrapper" <|-- "logwrapper.mock"
+
+namespace metric {
+    class gougeMetric << (S,Aquamarine) >> {
+        - gouge prometheus.GaugeVec
+        - metricAggregatorDTO aggregator.MetricAggregatorDTO
+
+        + Registry(duration float64) 
+
+    }
+    class histogramMetric << (S,Aquamarine) >> {
+        - histogram prometheus.HistogramVec
+        - metricAggregatorDTO aggregator.MetricAggregatorDTO
+
+        + Registry(duration float64) 
+
+    }
+}
+
+"aggregator.Meter" <|-- "metric.gougeMetric"
+"aggregator.Meter" <|-- "metric.histogramMetric"
+
+namespace prometheus {
+    class GaugeVec << (S,Aquamarine) >> {
+        + Observe( float64,  prometheus.Labels) 
+        + Unregister() bool
+        + AddWith(labels <font color=blue>map</font>[string]string, v float64) 
+
+    }
+    class Histogram << (S,Aquamarine) >> {
+        + Observe(v float64) 
+
+    }
+    class HistogramVec << (S,Aquamarine) >> {
+        + Start() HistogramVec
+        + Finished(constLabels <font color=blue>map</font>[string]string) 
+        + Success() 
+        + Error(code string) 
+        + With( prometheus.Labels) prometheus.Observer
+        + Observe( float64,  prometheus.Labels) 
+        + Unregister() bool
+        + ObserveWith(labels <font color=blue>map</font>[string]string, v float64) 
+
+    }
+    interface PrometheusMetricBuilder  {
+        + Namespace( string) PrometheusMetricBuilder
+        + Name( string) PrometheusMetricBuilder
+        + Help( string) PrometheusMetricBuilder
+        + ConstLabels( <font color=blue>map</font>[string]string) PrometheusMetricBuilder
+        + LabelNames( []string) PrometheusMetricBuilder
+        + BuildHistogramVec() (HistogramVec, error)
+        + BuildGougeVec() (GaugeVec, error)
+
+    }
+    class gougeVecObject << (S,Aquamarine) >> {
+        - gouge *prometheus.GaugeVec
+
+        + Unregister() bool
+        + Observe(duration float64, labels prometheus.Labels) 
+
+    }
+    class histogramVecObject << (S,Aquamarine) >> {
+        - histogram *prometheus.HistogramVec
+        - startedAt time.Time
+
+        + Unregister() bool
+        + Start() HistogramVec
+        + Finished(labels <font color=blue>map</font>[string]string) 
+        + Observe(duration float64, labels prometheus.Labels) 
+        + With(labels prometheus.Labels) prometheus.Observer
+        + Success() 
+        + Error(code string) 
+
+    }
+    class prometheusMetricBuilder << (S,Aquamarine) >> {
+        - namespace string
+        - name string
+        - help string
+        - constLabels <font color=blue>map</font>[string]string
+        - labelNames []string
+        - bukets []float64
+
+        + Namespace(value string) PrometheusMetricBuilder
+        + Name(value string) PrometheusMetricBuilder
+        + Help(value string) PrometheusMetricBuilder
+        + ConstLabels(value <font color=blue>map</font>[string]string) PrometheusMetricBuilder
+        + LabelNames(value []string) PrometheusMetricBuilder
+        + Bukets(value []float64) PrometheusMetricBuilder
+        + BuildHistogram() (HistogramVec, error)
+        + BuildGougeVec() (GaugeVec, error)
+        + BuildHistogramVec() (HistogramVec, error)
+
+    }
+}
+"prometheus.GaugeVec" *-- "prometheus.GaugeVec"
+"prometheus.Histogram" *-- "prometheus.Histogram"
+"prometheus.HistogramVec" *-- "prometheus.HistogramVec"
+
+"prometheus.GaugeVec" <|-- "prometheus.GaugeVec"
+"prometheus.HistogramVec" <|-- "prometheus.HistogramVec"
+"prometheus.PrometheusMetricBuilder" <|-- "prometheus.prometheusMetricBuilder"
+
+"__builtin__.<font color=blue>map</font>[string]string" #.. "aggregator.Labels"
+"__builtin__.<font color=blue>map</font>[string]string" #.. "latencyaggregator.Labels"
+"__builtin__.string" #.. "appcontext.ContextKey"
+@enduml
